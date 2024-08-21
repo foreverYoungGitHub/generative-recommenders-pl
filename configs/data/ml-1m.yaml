@@ -1,0 +1,27 @@
+_target_: generative_recommenders_pl.data.reco_dataset.RecoDataModule
+dataset_name: ml-1m
+batch_size: 16
+max_sequence_length: 200
+chronological: true
+positional_sampling_ratio: 1.0
+
+data_preprocessor:
+  _target_: generative_recommenders_pl.data.preprocessor.MovielensDataProcessor
+  download_path: http://files.grouplens.org/datasets/movielens/ml-1m.zip
+  saved_name: tmp/movielens1m.zip
+  prefix: ${data.dataset_name}
+  convert_timestamp: false
+  expected_num_unique_items: 3706
+  expected_max_item_id: 3952
+
+train_dataset:
+  _target_: generative_recommenders_pl.data.reco_dataset.RecoDataset
+  ignore_last_n: 1
+
+val_dataset:
+  _target_: generative_recommenders_pl.data.reco_dataset.RecoDataset
+  ignore_last_n: 0
+
+test_dataset:
+  _target_: generative_recommenders_pl.data.reco_dataset.RecoDataset
+  ignore_last_n: 0
