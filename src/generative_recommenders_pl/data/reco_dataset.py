@@ -192,7 +192,11 @@ class RecoDataModule(L.LightningDataModule):
         super().__init__()
         self.__dict__.update(locals())
         self.dataset_name = dataset_name
-        self.data_preprocessor = hydra.utils.instantiate(data_preprocessor)
+        self.data_preprocessor: DataProcessor = (
+            hydra.utils.instantiate(data_preprocessor)
+            if isinstance(data_preprocessor, DictConfig)
+            else data_preprocessor
+        )
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset
         self.test_dataset = test_dataset
@@ -200,8 +204,9 @@ class RecoDataModule(L.LightningDataModule):
         self.chronological = chronological
         self.positional_sampling_ratio = positional_sampling_ratio
         self.batch_size = batch_size
+        self.__init_item_ids()
 
-    def __post_init__(self):
+    def __init_item_ids(self):
         if self.dataset_name == "ml-1m" or self.dataset_name == "ml-20m":
             items = pd.read_csv(
                 self.data_preprocessor.processed_item_csv(), delimiter=","
@@ -259,7 +264,6 @@ class RecoDataModule(L.LightningDataModule):
                 kwargs["chronological"] = self.chronological
             if "position_sampling_ratio" not in dataset:
                 kwargs["sample_ratio"] = self.positional_sampling_ratio
-            print(kwargs)
             return hydra.utils.instantiate(dataset, **kwargs)
         else:
             return dataset

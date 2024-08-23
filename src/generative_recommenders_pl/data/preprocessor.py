@@ -40,6 +40,10 @@ class DataProcessor:
     @abc.abstractmethod
     def processed_item_csv(self) -> str:
         pass
+    
+    @abc.abstractmethod
+    def preprocess_rating(self) -> int:
+        pass
 
     def output_format_csv(self) -> str:
         return f"tmp/{self._prefix}/sasrec_format.csv"
