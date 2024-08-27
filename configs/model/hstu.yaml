@@ -1,0 +1,70 @@
+_target_: generative_recommenders_pl.models.generative_recommenders.GenerativeRecommenders
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.07
+  weight_decay: 0.6
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ExponentialLR
+  _partial_: true
+  gamma: 0.9
+
+configure_optimizer_params:
+  monitor: val/hr@100
+  interval: epoch
+  frequency: 1
+
+gr_output_length: 10
+item_embedding_dim: 50
+
+embeddings:
+  _target_: generative_recommenders_pl.models.embeddings.embeddings.LocalEmbeddingModule
+  num_items: ${data.data_preprocessor.expected_max_item_id}
+  item_embedding_dim: ${model.item_embedding_dim}
+
+preprocessor:
+  _target_: generative_recommenders_pl.models.preprocessors.input_features_preprocessors.LearnablePositionalEmbeddingInputFeaturesPreprocessor
+  max_sequence_len: ${eval:${data.max_sequence_length} + ${model.gr_output_length} + 1}
+  embedding_dim: ${model.item_embedding_dim}
+  dropout_rate: 0.2
+
+sequence_encoder:
+  _target_: generative_recommenders_pl.models.sequential_encoders.hstu.HSTU
+  max_sequence_len: ${data.max_sequence_length}
+  max_output_len: ${eval:${model.gr_output_length} + 1}
+  embedding_dim: ${model.item_embedding_dim}
+  item_embedding_dim: ${model.item_embedding_dim}
+  num_blocks: 2
+  num_heads: 1
+  attention_dim: ${model.item_embedding_dim}
+  linear_dim: ${model.item_embedding_dim}
+  linear_dropout_rate: 0.2
+  attn_dropout_rate: 0.0
+  normalization: rel_bias
+  linear_config: uvqk
+  linear_activation: silu
+  concat_ua: false
+  enable_relative_attention_bias: true
+
+postprocessor:
+  _target_: generative_recommenders_pl.models.postprocessors.postprocessors.L2NormEmbeddingPostprocessor
+  embedding_dim: ${model.item_embedding_dim}
+  eps: 1e-6
+
+similarity:
+  _target_: generative_recommenders_pl.models.similarity.dot_product.DotProductSimilarity
+
+negatives_sampler:
+  _target_: generative_recommenders_pl.models.negatives_samples.negative_sampler.LocalNegativesSampler
+  l2_norm: true
+  l2_norm_eps: 1e-6
+
+loss:
+  _target_: generative_recommenders_pl.models.losses.autoregressive_losses.SampledSoftmaxLoss
+  num_to_sample: 128
+  softmax_temperature: 0.05
+
+# compile model for faster training with pytorch 2.0
+compile_model: false
