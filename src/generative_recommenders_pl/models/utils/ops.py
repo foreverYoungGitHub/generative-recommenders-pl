@@ -1,8 +1,8 @@
 import torch
 
-from generative_recommenders_pl.utils.logger import configure_logger
+from generative_recommenders_pl.utils.logger import RankedLogger
 
-log = configure_logger(__name__)
+log = RankedLogger(__name__)
 __logged_errors = set()
 
 try:
@@ -10,14 +10,16 @@ try:
 except ImportError:
     if "fbgemm_gpu" not in __logged_errors:
         __logged_errors.add("fbgemm_gpu")
-        log.error("Failed to import fbgemm_gpu. Falling back to Pytorch implementation.")
+        log.error(
+            "Failed to import fbgemm_gpu. Falling back to Pytorch implementation."
+        )
 
 
 def asynchronous_complete_cumsum(lengths: torch.Tensor) -> torch.Tensor:
     """
     Args:
         lengths: (B,) x int, where each entry is in [0, X).
-        
+
     Returns:
         (B,) x int, where each entry is the cumulative sum of the corresponding entry in lengths.
     """
@@ -27,16 +29,21 @@ def asynchronous_complete_cumsum(lengths: torch.Tensor) -> torch.Tensor:
         if "asynchronous_complete_cumsum" not in __logged_errors:
             __logged_errors.add("asynchronous_complete_cumsum")
             log.error(f"Error: {e}")
-            log.error("Failed to call torch.ops.fbgemm.asynchronous_complete_cumsum. Falling back to Pytorch implementation.")
-        
-        return torch.cat((torch.tensor([0], dtype=lengths.dtype), torch.cumsum(lengths, dim=0)))
+            log.error(
+                "Failed to call torch.ops.fbgemm.asynchronous_complete_cumsum. Falling back to Pytorch implementation."
+            )
+
+        return torch.cat(
+            (torch.tensor([0], dtype=lengths.dtype), torch.cumsum(lengths, dim=0))
+        )
+
 
 def dense_to_jagged(dense_tensor: torch.Tensor, offsets: torch.Tensor) -> torch.Tensor:
     """
     Args:
         dense_tensor: (B, N, D,) x float, where B is the batch size, N is the number of elements in the dense tensor, and D is the dimension of each element.
         offsets: (B+1,) x int, where each entry is in [0, N], with an extra offset at the end to define the last slice boundary.
-    
+
     Returns:
         (X, D,) x float, where X is the corresponding entry in offsets.
     """
@@ -46,44 +53,58 @@ def dense_to_jagged(dense_tensor: torch.Tensor, offsets: torch.Tensor) -> torch.
         if "dense_to_jagged" not in __logged_errors:
             __logged_errors.add("dense_to_jagged")
             log.error(f"Error: {e}")
-            log.error("Failed to call torch.ops.fbgemm.dense_to_jagged. Falling back to Pytorch implementation.")
+            log.error(
+                "Failed to call torch.ops.fbgemm.dense_to_jagged. Falling back to Pytorch implementation."
+            )
 
         jagged_tensors = []
         for i in range(offsets.size(0) - 1):
-            length = offsets[i+1] - offsets[i]
+            length = offsets[i + 1] - offsets[i]
             jagged_tensors.append(dense_tensor[i, :length])
         return torch.cat(jagged_tensors, dim=0)
 
-def jagged_to_padded_dense(values: torch.Tensor, offsets: torch.Tensor, max_lengths: int, padding_value: float = 0.0) -> torch.Tensor:
+
+def jagged_to_padded_dense(
+    values: torch.Tensor,
+    offsets: torch.Tensor,
+    max_lengths: int,
+    padding_value: float = 0.0,
+) -> torch.Tensor:
     """
     Args:
         values: List of (X, D,) x float, where X is the corresponding entry in offsets.
         offsets: (B,) x int, where each entry is in [0, N].
         max_lengths: int, the maximum length of the padded tensor.
         padding_value: float, the value to pad the tensor with.
-        
+
     Returns:
         (B, max(max_lengths), D,) x float, where each row is a padded tensor from values.
     """
     if not isinstance(max_lengths, int):
         raise ValueError(f"max_lengths must be an integer, but got {type(max_lengths)}")
-    
+
     try:
-        return torch.ops.fbgemm.jagged_to_padded_dense(values, [offsets], [max_lengths], padding_value)
+        return torch.ops.fbgemm.jagged_to_padded_dense(
+            values, [offsets], [max_lengths], padding_value
+        )
     except Exception as e:
         if "jagged_to_padded_dense" not in __logged_errors:
             __logged_errors.add("jagged_to_padded_dense")
             log.error(f"Error: {e}")
-            log.error("Failed to call torch.ops.fbgemm.jagged_to_padded_dense. Falling back to Pytorch implementation.")
-        
+            log.error(
+                "Failed to call torch.ops.fbgemm.jagged_to_padded_dense. Falling back to Pytorch implementation."
+            )
+
         # This implementation is simplified for this specific use case.
         # Calculate the total number of sequences and the maximum sequence length
         num_sequences = offsets.size(0) - 1
         sequences_shape = values.shape[1:]
-        
+
         # Initialize the padded tensor
-        padded_tensor = torch.full((num_sequences, max_lengths, *sequences_shape), padding_value)
-        
+        padded_tensor = torch.full(
+            (num_sequences, max_lengths, *sequences_shape), padding_value
+        )
+
         # Fill in the padded tensor with values from the jagged tensors
         for i in range(num_sequences):
             start = offsets[i]
@@ -91,6 +112,7 @@ def jagged_to_padded_dense(values: torch.Tensor, offsets: torch.Tensor, max_leng
             length = end - start
             padded_tensor[i, :length] = values[start:end]
         return padded_tensor
+
 
 def batch_gather_embeddings(
     rowwise_indices: torch.Tensor,

@@ -7,25 +7,31 @@ import torchmetrics
 from omegaconf import DictConfig
 
 from generative_recommenders_pl.data.reco_dataset import RecoDataModule
-from generative_recommenders_pl.models.embeddings.embeddings import \
-    EmbeddingModule
-from generative_recommenders_pl.models.indexing.candidate_index import \
-    CandidateIndex
-from generative_recommenders_pl.models.losses.autoregressive_losses import \
-    AutoregressiveLoss
+from generative_recommenders_pl.models.embeddings.embeddings import EmbeddingModule
+from generative_recommenders_pl.models.indexing.candidate_index import CandidateIndex
+from generative_recommenders_pl.models.losses.autoregressive_losses import (
+    AutoregressiveLoss,
+)
 from generative_recommenders_pl.models.negatives_samples.negative_sampler import (
-    InBatchNegativesSampler, NegativesSampler)
-from generative_recommenders_pl.models.postprocessors.postprocessors import \
-    OutputPostprocessorModule
-from generative_recommenders_pl.models.preprocessors.input_features_preprocessors import \
-    InputFeaturesPreprocessorModule
+    InBatchNegativesSampler,
+    NegativesSampler,
+)
+from generative_recommenders_pl.models.postprocessors.postprocessors import (
+    OutputPostprocessorModule,
+)
+from generative_recommenders_pl.models.preprocessors.input_features_preprocessors import (
+    InputFeaturesPreprocessorModule,
+)
 from generative_recommenders_pl.models.similarity.ndp_module import NDPModule
 from generative_recommenders_pl.models.utils import ops
 from generative_recommenders_pl.models.utils.features import (
-    SequentialFeatures, seq_features_from_row)
-from generative_recommenders_pl.utils.logger import configure_logger
+    SequentialFeatures,
+    seq_features_from_row,
+)
+from generative_recommenders_pl.utils.logger import RankedLogger
 
-log = configure_logger(__name__)
+log = RankedLogger(__name__)
+
 
 class GenerativeRecommenders(L.LightningModule):
     def __init__(
@@ -49,14 +55,22 @@ class GenerativeRecommenders(L.LightningModule):
     ) -> None:
         super().__init__()
 
-        self.optimizer: torch.optim.Optimizer = hydra.utils.instantiate(optimizer) if isinstance(optimizer, DictConfig) else optimizer
-        self.scheduler: torch.optim.lr_scheduler.LRScheduler = hydra.utils.instantiate(scheduler) if isinstance(scheduler, DictConfig) else scheduler
+        self.optimizer: torch.optim.Optimizer = (
+            hydra.utils.instantiate(optimizer)
+            if isinstance(optimizer, DictConfig)
+            else optimizer
+        )
+        self.scheduler: torch.optim.lr_scheduler.LRScheduler = (
+            hydra.utils.instantiate(scheduler)
+            if isinstance(scheduler, DictConfig)
+            else scheduler
+        )
         self.configure_optimizer_params: dict[str, Any] = configure_optimizer_params
 
         self.gr_output_length: int = gr_output_length
         self.item_embedding_dim: int = item_embedding_dim
         self.compile_model: bool = compile_model
-        
+
         self.__hydra_init_submodules(
             datamodule=datamodule,
             embeddings=embeddings,
@@ -69,9 +83,10 @@ class GenerativeRecommenders(L.LightningModule):
             loss=loss,
             metrics=metrics,
         )
-        
 
-    def __hydra_init_submodules(self, datamodule: RecoDataModule, 
+    def __hydra_init_submodules(
+        self,
+        datamodule: RecoDataModule,
         embeddings: EmbeddingModule | DictConfig,
         preprocessor: InputFeaturesPreprocessorModule | DictConfig,
         sequence_encoder: torch.nn.Module | DictConfig,
@@ -92,19 +107,25 @@ class GenerativeRecommenders(L.LightningModule):
                 return hydra.utils.instantiate(embeddings, **kwargs)
             else:
                 return embeddings
-            
-        def init_preprocessor_module(preprocessor: InputFeaturesPreprocessorModule | DictConfig) -> InputFeaturesPreprocessorModule:
+
+        def init_preprocessor_module(
+            preprocessor: InputFeaturesPreprocessorModule | DictConfig,
+        ) -> InputFeaturesPreprocessorModule:
             if isinstance(embeddings, DictConfig):
                 kwargs = {}
                 if "max_sequence_len" not in preprocessor:
-                    kwargs["max_sequence_len"] = datamodule.max_sequence_length + self.gr_output_length + 1
+                    kwargs["max_sequence_len"] = (
+                        datamodule.max_sequence_length + self.gr_output_length + 1
+                    )
                 if "embedding_dim" not in preprocessor:
                     kwargs["embedding_dim"] = self.item_embedding_dim
                 return hydra.utils.instantiate(preprocessor, **kwargs)
             else:
                 return preprocessor
-        
-        def init_sequence_encoder_module(sequence_encoder: torch.nn.Module | DictConfig) -> torch.nn.Module:
+
+        def init_sequence_encoder_module(
+            sequence_encoder: torch.nn.Module | DictConfig,
+        ) -> torch.nn.Module:
             if isinstance(sequence_encoder, DictConfig):
                 kwargs = {}
                 if "max_sequence_len" not in sequence_encoder:
@@ -123,7 +144,9 @@ class GenerativeRecommenders(L.LightningModule):
             else:
                 return sequence_encoder
 
-        def init_postprocessor_module(postprocessor: OutputPostprocessorModule | DictConfig) -> OutputPostprocessorModule:
+        def init_postprocessor_module(
+            postprocessor: OutputPostprocessorModule | DictConfig,
+        ) -> OutputPostprocessorModule:
             if isinstance(postprocessor, DictConfig):
                 kwargs = {}
                 if "embedding_dim" not in postprocessor:
@@ -138,7 +161,9 @@ class GenerativeRecommenders(L.LightningModule):
             else:
                 return similarity
 
-        def init_negatives_sampler_module(negatives_sampler: NegativesSampler | DictConfig) -> NegativesSampler:
+        def init_negatives_sampler_module(
+            negatives_sampler: NegativesSampler | DictConfig,
+        ) -> NegativesSampler:
             if isinstance(negatives_sampler, DictConfig):
                 kwargs = {}
                 if negatives_sampler["_target_"].endswith("LocalNegativesSampler"):
@@ -148,7 +173,9 @@ class GenerativeRecommenders(L.LightningModule):
             else:
                 return negatives_sampler
 
-        def init_candidate_index_module(candidate_index: CandidateIndex) -> CandidateIndex:
+        def init_candidate_index_module(
+            candidate_index: CandidateIndex,
+        ) -> CandidateIndex:
             if isinstance(candidate_index, DictConfig):
                 kwargs = {}
                 if "ids" not in candidate_index:
@@ -157,28 +184,41 @@ class GenerativeRecommenders(L.LightningModule):
             else:
                 return candidate_index
 
-        def init_loss_module(loss: AutoregressiveLoss | DictConfig) -> AutoregressiveLoss:
+        def init_loss_module(
+            loss: AutoregressiveLoss | DictConfig,
+        ) -> AutoregressiveLoss:
             if isinstance(loss, DictConfig):
                 return hydra.utils.instantiate(loss)
             else:
                 return loss
-            
-        def init_metrics_module(metrics: torchmetrics.Metric | DictConfig) -> torchmetrics.Metric:
+
+        def init_metrics_module(
+            metrics: torchmetrics.Metric | DictConfig,
+        ) -> torchmetrics.Metric:
             if isinstance(metrics, DictConfig):
                 return hydra.utils.instantiate(metrics)
             else:
                 return metrics
-        
+
         self.embeddings: EmbeddingModule = init_embedding_module(embeddings)
-        self.preprocessor: InputFeaturesPreprocessorModule = init_preprocessor_module(preprocessor)
-        self.sequence_encoder: torch.nn.Module = init_sequence_encoder_module(sequence_encoder)
-        self.postprocessor: OutputPostprocessorModule = init_postprocessor_module(postprocessor)
+        self.preprocessor: InputFeaturesPreprocessorModule = init_preprocessor_module(
+            preprocessor
+        )
+        self.sequence_encoder: torch.nn.Module = init_sequence_encoder_module(
+            sequence_encoder
+        )
+        self.postprocessor: OutputPostprocessorModule = init_postprocessor_module(
+            postprocessor
+        )
         self.similarity: NDPModule = init_similarity_module(similarity)
-        self.negatives_sampler: NegativesSampler = init_negatives_sampler_module(negatives_sampler)
-        self.candidate_index: CandidateIndex = init_candidate_index_module(candidate_index)
+        self.negatives_sampler: NegativesSampler = init_negatives_sampler_module(
+            negatives_sampler
+        )
+        self.candidate_index: CandidateIndex = init_candidate_index_module(
+            candidate_index
+        )
         self.loss: AutoregressiveLoss = init_loss_module(loss)
         self.metrics: torchmetrics.Metric = init_metrics_module(metrics)
-        
 
     def setup(self, stage: str) -> None:
         """Lightning hook that is called at the beginning of fit (train + validate), validate,
@@ -211,26 +251,45 @@ class GenerativeRecommenders(L.LightningModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    **self.configure_optimizer_params
+                    **self.configure_optimizer_params,
                 },
             }
         return {"optimizer": optimizer}
 
-    def state_dict(self, destination=None, prefix='', keep_vars=False):
+    def state_dict(self, destination=None, prefix="", keep_vars=False):
         # Call the superclass's state_dict method to get the full state dictionary
-        state_dict = super().state_dict(destination=destination, prefix=prefix, keep_vars=keep_vars)
-        
+        state_dict = super().state_dict(
+            destination=destination, prefix=prefix, keep_vars=keep_vars
+        )
+
         # List of module names you don't want to save
-        modules_to_exclude = ['similarity', 'negatives_sampler', 'candidate_index', 'loss', 'metrics']
-        
+        modules_to_exclude = [
+            "similarity",
+            "negatives_sampler",
+            "candidate_index",
+            "loss",
+            "metrics",
+        ]
+
         # Remove the keys corresponding to the modules to exclude
-        keys_to_remove = [key for key in state_dict.keys() for module_name in modules_to_exclude if key.startswith(prefix + module_name)]
+        keys_to_remove = [
+            key
+            for key in state_dict.keys()
+            for module_name in modules_to_exclude
+            if key.startswith(prefix + module_name)
+        ]
         for key in keys_to_remove:
             del state_dict[key]
-        
+
         return state_dict
 
-    def forward(self, seq_features: SequentialFeatures) -> tuple[torch.Tensor, torch.Tensor]:
+    def load_state_dict(self, state_dict, strict=True):
+        # since we removed some keys from the state_dict, we need to set strict=False
+        super().load_state_dict(state_dict, strict=False)
+
+    def forward(
+        self, seq_features: SequentialFeatures
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """Lightning calls this inside the training loop.
 
         Args:
@@ -239,7 +298,7 @@ class GenerativeRecommenders(L.LightningModule):
         Returns:
             torch.Tensor: The output tensor.
             cached_states: The cached states.
-        """        
+        """
         # input features preprocessor
         past_lengths, user_embeddings, valid_mask = self.preprocessor(
             past_lengths=seq_features.past_lengths,
@@ -247,7 +306,7 @@ class GenerativeRecommenders(L.LightningModule):
             past_embeddings=seq_features.past_embeddings,
             past_payloads=seq_features.past_payloads,
         )
-        
+
         # sequence encoder
         user_embeddings, cached_states = self.sequence_encoder(
             past_lengths=past_lengths,
@@ -255,54 +314,63 @@ class GenerativeRecommenders(L.LightningModule):
             valid_mask=valid_mask,
             past_payloads=seq_features.past_payloads,
         )
-        
+
         # output postprocessor
         encoded_embeddings = self.postprocessor(user_embeddings)
         return encoded_embeddings, cached_states
 
     @torch.inference_mode
-    def retrieve(self, seq_features: SequentialFeatures, filter_past_ids: bool = True,) -> tuple[torch.Tensor, torch.Tensor]:
+    def retrieve(
+        self,
+        seq_features: SequentialFeatures,
+        filter_past_ids: bool = True,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Retrieve the top-k items for the given sequence features.
-        
+
         """
-        seq_embeddings, _ = self.forward(seq_features) # [B, X]
-        current_embeddings = ops.get_current_embeddings(seq_features.past_lengths, seq_embeddings)
-        
+        seq_embeddings, _ = self.forward(seq_features)  # [B, X]
+        current_embeddings = ops.get_current_embeddings(
+            seq_features.past_lengths, seq_embeddings
+        )
+
         if self.candidate_index.embeddings is None:
-            log.info("Initializing candidate index embeddings with current item embeddings")
-            self.candidate_index.update_embeddings(self.negatives_sampler.normalize_embeddings(
-                self.embeddings.get_item_embeddings(self.candidate_index.ids)
-            ))
-        
+            log.info(
+                "Initializing candidate index embeddings with current item embeddings"
+            )
+            self.candidate_index.update_embeddings(
+                self.negatives_sampler.normalize_embeddings(
+                    self.embeddings.get_item_embeddings(self.candidate_index.ids)
+                )
+            )
+
         top_k_ids, top_k_scores = self.candidate_index.get_top_k_outputs(
             query_embeddings=current_embeddings,
-            invalid_ids=(
-                    seq_features.past_ids
-                    if filter_past_ids
-                    else None
-                ),
+            invalid_ids=(seq_features.past_ids if filter_past_ids else None),
         )
         return top_k_ids, top_k_scores
 
-    def dense_to_jagged(self, lengths: torch.Tensor, **kwargs) -> dict[str, torch.Tensor]:
+    def dense_to_jagged(
+        self, lengths: torch.Tensor, **kwargs
+    ) -> dict[str, torch.Tensor]:
         """Convert dense tensor to jagged tensor.
-        
+
         Args:
             lengths (torch.Tensor): The lengths tensor.
             **kwargs: The dict with the dense tensor to be converted.
-        
+
         Returns:
             dict[str, torch.Tensor]: The jagged tensor.
         """
         jagged_id_offsets = ops.asynchronous_complete_cumsum(lengths)
         return {
-            key: ops.dense_to_jagged(
-                kwargs[key], jagged_id_offsets
-            ) if key != "supervision_ids" else
-            ops.dense_to_jagged(
+            key: ops.dense_to_jagged(kwargs[key], jagged_id_offsets)
+            if key != "supervision_ids"
+            else ops.dense_to_jagged(
                 kwargs[key].unsqueeze(-1).float(), jagged_id_offsets
-            ).squeeze(1).long()
+            )
+            .squeeze(1)
+            .long()
             for key in kwargs
         }
 
@@ -323,23 +391,24 @@ class GenerativeRecommenders(L.LightningModule):
             device=self.device,
             max_output_length=self.gr_output_length + 1,
         )
+        # add target_ids at the end of the past_ids
         seq_features.past_ids.scatter_(
             dim=1,
             index=seq_features.past_lengths.view(-1, 1),
             src=target_ids.view(-1, 1),
-        )        
+        )
 
         # embeddings
         input_embeddings = self.embeddings.get_item_embeddings(seq_features.past_ids)
         # TODO: think a better way than replace, since it creates a new instance
         seq_features = seq_features._replace(past_embeddings=input_embeddings)
-        
+
         # forward pass
-        seq_embeddings, _ = self.forward(seq_features) # [B, X]
-        
+        seq_embeddings, _ = self.forward(seq_features)  # [B, X]
+
         # prepare loss
         supervision_ids = seq_features.past_ids
-        
+
         # negative sampling
         if isinstance(self.negatives_sampler, InBatchNegativesSampler):
             # get_item_embeddings currently assume 1-d tensor.
@@ -352,7 +421,7 @@ class GenerativeRecommenders(L.LightningModule):
         else:
             # update embedding in the  local negative sampling
             self.negatives_sampler._item_emb = self.embeddings._item_emb
-                
+
         # dense features to jagged features
         # TODO: seems that the target_ids is not used in the loss
         jagged_features = self.dense_to_jagged(
@@ -360,26 +429,32 @@ class GenerativeRecommenders(L.LightningModule):
             output_embeddings=seq_embeddings[:, :-1, :],  # [B, N-1, D]
             supervision_ids=supervision_ids[:, 1:],  # [B, N-1]
             supervision_embeddings=input_embeddings[:, 1:, :],  # [B, N - 1, D]
-            supervision_weights=(supervision_ids[:, 1:] != 0).float(), # ar_mask
+            supervision_weights=(supervision_ids[:, 1:] != 0).float(),  # ar_mask
         )
-        
+
         loss = self.loss.jagged_forward(
             negatives_sampler=self.negatives_sampler,
             similarity=self.similarity,
             **jagged_features,
         )
 
-        self.log("train/loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log(
+            "train/loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
+        )
         return loss
 
     def on_validation_epoch_start(self) -> None:
         """Lightning calls this at the beginning of the validation epoch."""
         self.metrics.reset()
-        self.candidate_index.update_embeddings(self.negatives_sampler.normalize_embeddings(
-            self.embeddings.get_item_embeddings(self.candidate_index.ids)
-        ))
+        self.candidate_index.update_embeddings(
+            self.negatives_sampler.normalize_embeddings(
+                self.embeddings.get_item_embeddings(self.candidate_index.ids)
+            )
+        )
 
-    def validation_step(self, batch: tuple[torch.Tensor], batch_idx: int) -> torch.Tensor:
+    def validation_step(
+        self, batch: tuple[torch.Tensor], batch_idx: int
+    ) -> torch.Tensor:
         """Lightning calls this inside the validation loop.
 
         Args:
@@ -396,21 +471,16 @@ class GenerativeRecommenders(L.LightningModule):
             device=self.device,
             max_output_length=self.gr_output_length + 1,
         )
-        seq_features.past_ids.scatter_(
-            dim=1,
-            index=seq_features.past_lengths.view(-1, 1),
-            src=target_ids.view(-1, 1),
-        )        
 
         # embeddings
         input_embeddings = self.embeddings.get_item_embeddings(seq_features.past_ids)
         # TODO: think a better way than replace, since it creates a new instance
         seq_features = seq_features._replace(past_embeddings=input_embeddings)
-        
+
         # forward pass
         top_k_ids, top_k_scores = self.retrieve(seq_features)
         self.metrics.update(top_k_ids=top_k_ids, target_ids=target_ids)
-    
+
     def on_validation_epoch_end(self) -> None:
         """Lightning calls this at the end of the validation epoch.
 
@@ -423,14 +493,16 @@ class GenerativeRecommenders(L.LightningModule):
         self.metrics.reset()
         if "monitor" in self.configure_optimizer_params:
             return results[self.configure_optimizer_params["monitor"].split("/")[1]]
-    
+
     def on_test_epoch_start(self) -> None:
         """Lightning calls this at the beginning of the test epoch."""
         self.metrics.reset()
-        self.candidate_index.update_embeddings(self.negatives_sampler.normalize_embeddings(
-            self.embeddings.get_item_embeddings(self.candidate_index.ids)
-        ))
-    
+        self.candidate_index.update_embeddings(
+            self.negatives_sampler.normalize_embeddings(
+                self.embeddings.get_item_embeddings(self.candidate_index.ids)
+            )
+        )
+
     def test_step(self, batch: tuple[torch.Tensor], batch_idx: int) -> torch.Tensor:
         """Lightning calls this inside the test loop.
 
@@ -440,7 +512,7 @@ class GenerativeRecommenders(L.LightningModule):
             batch_idx (int): The index of the batch.
         """
         self.validation_step(batch, batch_idx)
-    
+
     def on_test_epoch_end(self) -> None:
         """Lightning calls this at the end of the test epoch.
 

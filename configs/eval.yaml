@@ -2,13 +2,17 @@
 
 defaults:
   - _self_
-  - data: mnist # choose datamodule with `test_dataloader()` for evaluation
-  - model: mnist
-  - logger: null
+  - data: ml-1m
+  - model: hstu
+  - callbacks: default
+  - logger: many_loggers
   - trainer: default
   - paths: default
   - extras: default
   - hydra: default
+  - experiment: null
+  - optional local: default
+  - debug: null
 
 task_name: "eval"
 

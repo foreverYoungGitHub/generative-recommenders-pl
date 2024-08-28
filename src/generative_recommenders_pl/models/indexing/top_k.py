@@ -17,8 +17,8 @@ from typing import Tuple
 
 import torch
 
-class TopKModule(torch.nn.Module):
 
+class TopKModule(torch.nn.Module):
     @abc.abstractmethod
     def forward(
         self,
@@ -61,6 +61,10 @@ class MIPSBruteForceTopK(TopKModule):
         # (B, X,)
         all_logits = torch.mm(query_embeddings, item_embeddings_t)
         top_k_logits, top_k_indices = torch.topk(
-            all_logits, dim=1, k=k, sorted=sorted, largest=True,
+            all_logits,
+            dim=1,
+            k=k,
+            sorted=sorted,
+            largest=True,
         )  # (B, k,)
         return top_k_logits, item_ids.squeeze(0)[top_k_indices]

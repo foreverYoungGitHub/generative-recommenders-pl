@@ -5,9 +5,9 @@ from lightning import Callback
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig
 
-from generative_recommenders_pl.utils.logger import configure_logger
+from generative_recommenders_pl.utils.logger import RankedLogger
 
-log = configure_logger(__name__)
+log = RankedLogger(__name__)
 
 
 def instantiate_callbacks(callbacks_cfg: DictConfig) -> list[Callback]:

@@ -3,13 +3,13 @@ import abc
 import torch
 import torch.nn.functional as F
 
-from generative_recommenders_pl.models.negatives_samples.negative_sampler import \
-    NegativesSampler
+from generative_recommenders_pl.models.negatives_samples.negative_sampler import (
+    NegativesSampler,
+)
 from generative_recommenders_pl.models.similarity.ndp_module import NDPModule
 
 
 class AutoregressiveLoss(torch.nn.Module):
-
     @abc.abstractmethod
     def jagged_forward(
         self,
@@ -36,7 +36,6 @@ class AutoregressiveLoss(torch.nn.Module):
             (1), loss for the current engaged sequence.
         """
         pass
-
 
 
 class BCELoss(AutoregressiveLoss):
@@ -77,9 +76,10 @@ class BCELoss(AutoregressiveLoss):
                     1
                 ),  # [N', D] -> [N', 1, D]
                 item_sideinfo=None,
-                item_ids=supervision_ids.unsqueeze(1), # [N', 1]
+                item_ids=supervision_ids.unsqueeze(1),  # [N', 1]
                 precomputed_logits=None,
-            )[0].squeeze(1) / self._temperature
+            )[0].squeeze(1)
+            / self._temperature
         )  # [N']
 
         sampled_negatives_logits = (
@@ -89,7 +89,8 @@ class BCELoss(AutoregressiveLoss):
                 item_sideinfo=None,
                 item_ids=sampled_ids,  # [N', 1]
                 precomputed_logits=None,
-            )[0].squeeze(1) / self._temperature
+            )[0].squeeze(1)
+            / self._temperature
         )  # [N']
         sampled_negatives_valid_mask = (
             supervision_ids != sampled_ids.squeeze(1)
@@ -148,9 +149,10 @@ class BCELossWithRatings(AutoregressiveLoss):
                     1
                 ),  # [N', D] -> [N', 1, D]
                 item_sideinfo=None,
-                item_ids=supervision_ids.unsqueeze(1), # [N', 1]
+                item_ids=supervision_ids.unsqueeze(1),  # [N', 1]
                 precomputed_logits=None,
-            )[0].squeeze(1) / self._temperature
+            )[0].squeeze(1)
+            / self._temperature
         )  # [N']
 
         # loss_weights = (supervision_ids > 0).to(torch.float32)
@@ -166,7 +168,6 @@ class BCELossWithRatings(AutoregressiveLoss):
 
 
 class SampledSoftmaxLoss(AutoregressiveLoss):
-
     def __init__(
         self,
         num_to_sample: int,
@@ -203,7 +204,7 @@ class SampledSoftmaxLoss(AutoregressiveLoss):
                     1
                 ),  # [N', D] -> [N', 1, D]
                 item_sideinfo=None,
-                item_ids=supervision_ids.unsqueeze(1), # [N', 1]
+                item_ids=supervision_ids.unsqueeze(1),  # [N', 1]
                 precomputed_logits=None,
             )
             / self._softmax_temperature
@@ -214,7 +215,7 @@ class SampledSoftmaxLoss(AutoregressiveLoss):
             item_sideinfo=None,
             item_ids=sampled_ids,  # [N', R]
             precomputed_logits=None,
-        ) # [N', R]
+        )  # [N', R]
         sampled_negatives_logits = torch.where(
             supervision_ids.unsqueeze(1) == sampled_ids,  # [N', R]
             -5e4,

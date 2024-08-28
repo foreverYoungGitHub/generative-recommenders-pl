@@ -7,7 +7,6 @@ from generative_recommenders_pl.models.utils import ops
 
 
 class CandidateIndex(object):
-
     def __init__(
         self,
         k: int,

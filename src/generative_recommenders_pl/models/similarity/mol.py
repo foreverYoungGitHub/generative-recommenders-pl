@@ -1,5 +1,5 @@
 """
-Implements MoL (Mixture-of-Logits) in 
+Implements MoL (Mixture-of-Logits) in
 Revisiting Neural Retrieval on Accelerators (https://arxiv.org/abs/2306.04039, KDD'23).
 """
 
@@ -9,12 +9,12 @@ import torch
 import torch.nn.functional as F
 
 from generative_recommenders_pl.models.similarity.ndp_module import NDPModule
-from generative_recommenders_pl.models.utils.initialization import \
-    init_mlp_xavier_weights_zero_bias
+from generative_recommenders_pl.models.utils.initialization import (
+    init_mlp_xavier_weights_zero_bias,
+)
 
 
 class SoftmaxDropout(torch.nn.Module):
-
     def __init__(
         self,
         dropout_rate: float,
@@ -36,7 +36,6 @@ class SoftmaxDropout(torch.nn.Module):
 
 
 class SoftmaxDropoutCombiner(torch.nn.Module):
-
     def __init__(
         self,
         dropout_rate: float,
@@ -95,7 +94,6 @@ class IdentityMLPProjectionFn(torch.nn.Module):
 
 
 class TauFn(torch.nn.Module):
-
     def __init__(
         self,
         alpha: float,
@@ -117,7 +115,6 @@ class TauFn(torch.nn.Module):
 
 
 class GeGLU(torch.nn.Module):
-
     def __init__(
         self,
         in_features: int,
@@ -186,7 +183,6 @@ class SwiGLU(torch.nn.Module):
 
 
 class MoLGatingFn(torch.nn.Module):
-
     def __init__(
         self,
         num_logits: int,

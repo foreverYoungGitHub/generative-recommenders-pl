@@ -6,10 +6,13 @@ from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig, OmegaConf
 
 from generative_recommenders_pl.utils.instantiators import (
-    get_metric_value, instantiate_callbacks, instantiate_loggers)
-from generative_recommenders_pl.utils.logger import configure_logger
+    get_metric_value,
+    instantiate_callbacks,
+    instantiate_loggers,
+)
+from generative_recommenders_pl.utils.logger import RankedLogger
 
-log = configure_logger(__name__)
+log = RankedLogger(__name__)
 
 
 OmegaConf.register_new_resolver("eval", eval)
@@ -40,9 +43,9 @@ def train(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
     )
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
-    model: L.LightningModule = hydra.utils.instantiate(cfg.model,
-                                                         datamodule=datamodule,
-                                                         _recursive_=False)
+    model: L.LightningModule = hydra.utils.instantiate(
+        cfg.model, datamodule=datamodule, _recursive_=False
+    )
 
     log.info("Instantiating callbacks...")
     callbacks: list[L.Callback] = instantiate_callbacks(cfg.get("callbacks"))

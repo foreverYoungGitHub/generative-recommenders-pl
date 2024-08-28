@@ -18,7 +18,6 @@ import torch
 
 
 class NDPModule(torch.nn.Module):
-
     def forward(
         self,
         input_embeddings: torch.Tensor,

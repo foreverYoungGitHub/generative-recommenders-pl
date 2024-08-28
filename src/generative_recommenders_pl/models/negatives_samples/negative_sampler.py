@@ -19,7 +19,6 @@ import torch
 
 
 class NegativesSampler(torch.nn.Module):
-
     def __init__(self, l2_norm: bool, l2_norm_eps: float) -> None:
         super().__init__()
 
@@ -64,7 +63,6 @@ class NegativesSampler(torch.nn.Module):
 
 
 class LocalNegativesSampler(NegativesSampler):
-
     def __init__(
         self,
         l2_norm: bool,
@@ -126,7 +124,6 @@ class LocalNegativesSampler(NegativesSampler):
 
 
 class InBatchNegativesSampler(NegativesSampler):
-
     def __init__(
         self,
         l2_norm: bool,

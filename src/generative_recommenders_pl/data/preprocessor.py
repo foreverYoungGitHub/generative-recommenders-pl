@@ -40,7 +40,7 @@ class DataProcessor:
     @abc.abstractmethod
     def processed_item_csv(self) -> str:
         pass
-    
+
     @abc.abstractmethod
     def preprocess_rating(self) -> int:
         pass
@@ -356,7 +356,7 @@ class AmazonDataProcessor(DataProcessor):
             f"{self._prefix} #user after filter: {len(set(ratings['user_id'].values))}"
         )
         print(
-            f"{self._prefix} #item ater filter: {len(set(ratings['item_id'].values))}"
+            f"{self._prefix} #item after filter: {len(set(ratings['item_id'].values))}"
         )
 
         num_unique_items = len(set(ratings["item_id"].values))
