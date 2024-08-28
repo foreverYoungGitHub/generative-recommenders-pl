@@ -6,12 +6,15 @@ from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig, OmegaConf
 
 from generative_recommenders_pl.utils.instantiators import (
-    get_metric_value, instantiate_loggers)
+    get_metric_value,
+    instantiate_loggers,
+)
 from generative_recommenders_pl.utils.logger import RankedLogger
 
 log = RankedLogger(__name__)
 
 OmegaConf.register_new_resolver("eval", eval)
+
 
 def evaluate(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
     """Evaluates given checkpoint on a datamodule testset.
@@ -31,9 +34,9 @@ def evaluate(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
     )
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
-    model: L.LightningModule = hydra.utils.instantiate(cfg.model,
-                                                        datamodule=datamodule,
-                                                        _recursive_=False)
+    model: L.LightningModule = hydra.utils.instantiate(
+        cfg.model, datamodule=datamodule, _recursive_=False
+    )
 
     log.info("Instantiating loggers...")
     logger: list[Logger] = instantiate_loggers(cfg.get("logger"))
@@ -60,9 +63,7 @@ def evaluate(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
     return metric_dict, object_dict
 
 
-@hydra.main(
-    version_base="1.3", config_path="../../../configs", config_name="eval.yaml"
-)
+@hydra.main(version_base="1.3", config_path="../../../configs", config_name="eval.yaml")
 def main(cfg: DictConfig) -> Optional[float]:
     """Main entry point for evaluate.
 
@@ -78,7 +79,9 @@ def main(cfg: DictConfig) -> Optional[float]:
     metric_dict, _ = evaluate(cfg)
 
     # safely retrieve metric value for hydra-based hyperparameter optimization
-    metric_value = get_metric_value(metric_dict=metric_dict, metric_name=cfg.get("optimized_metric"))
+    metric_value = get_metric_value(
+        metric_dict=metric_dict, metric_name=cfg.get("optimized_metric")
+    )
 
     # return optimized metric
     return metric_value
