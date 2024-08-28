@@ -61,10 +61,21 @@ negatives_sampler:
   l2_norm: true
   l2_norm_eps: 1e-6
 
+candidate_index:
+  _target_: generative_recommenders_pl.models.indexing.candidate_index.CandidateIndex
+  k: 200
+  top_k_module:
+    _target_: generative_recommenders_pl.models.indexing.top_k.MIPSBruteForceTopK
+
 loss:
   _target_: generative_recommenders_pl.models.losses.autoregressive_losses.SampledSoftmaxLoss
   num_to_sample: 128
   softmax_temperature: 0.05
+
+metrics:
+  _target_: generative_recommenders_pl.models.metrics.retrieval.RetrievalMetrics
+  k: ${model.candidate_index.k}
+  at_k_list: [10, 50, 100, 200]
 
 # compile model for faster training with pytorch 2.0
 compile_model: false
