@@ -21,6 +21,7 @@ dependencies = [
 dev = [
     "ruff",
     "black",
+    "pre-commit",
 ]
 
 test = [
@@ -31,3 +32,9 @@ test = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+# not working properly with hydra config
+# [project.scripts]
+# gr_train = "generative_recommenders_pl.scripts.train:main"
+# gr_eval = "generative_recommenders_pl.scripts.eval:main"
+# gr_prepare_data = "generative_recommenders_pl.scripts.prepare_data:main"
