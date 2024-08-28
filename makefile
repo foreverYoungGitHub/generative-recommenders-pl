@@ -1,15 +1,17 @@
 
-format:
-	ruff check src tests --fix
-	isort src tests
+help:  ## Show help
+	grep -E '^[.a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-lint:
-	ruff check src tests
-	isort --check-only --diff --filter-files src tests
+format: ## Run pre-commit hooks to format the code
+	pre-commit run -a
 
-style: lint format
-
-test:
+test: ## Run all tests
 	coverage erase
 	coverage run --source=src/ -m pytest tests --durations=10 -vv
 	coverage report --format=markdown
+
+train: ## Train the model
+	python src/generative_recommenders_pl/scripts/train.py $(MAKEOVERRIDES)
+
+eval: ## Evaluate the model
+	python src/generative_recommenders_pl/scripts/eval.py $(MAKEOVERRIDES)
