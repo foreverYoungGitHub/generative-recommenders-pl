@@ -155,12 +155,6 @@ class RecoDataset(torch.utils.data.Dataset):
             max_seq_len,
             self._chronological,
         )
-        # moved to features.py
-        # if self._chronological:
-        #     historical_ids.append(0)
-        #     historical_ratings.append(0)
-        #     historical_timestamps.append(0)
-        # print(historical_ids, historical_ratings, historical_timestamps, target_ids, target_ratings, target_timestamps)
         ret = {
             "user_id": user_id,
             "historical_ids": torch.tensor(historical_ids, dtype=torch.int64),

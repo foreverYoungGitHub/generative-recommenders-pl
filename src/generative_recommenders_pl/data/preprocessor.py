@@ -1,7 +1,6 @@
 import abc
 import logging
 import os
-import sys
 import tarfile
 from typing import Optional
 from urllib.request import urlretrieve
@@ -10,7 +9,9 @@ from zipfile import ZipFile
 import numpy as np
 import pandas as pd
 
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+from generative_recommenders_pl.utils.logger import RankedLogger
+
+log = RankedLogger(__name__)
 
 
 class DataProcessor:
@@ -204,20 +205,12 @@ class MovielensDataProcessor(DataProcessor):
             users["zip_code"] = users.zip_code.cat.codes
 
         # Normalize movie ids to speed up training
-        print(
+        log.info(
             f"{self._prefix} #item before normalize: {len(set(ratings['movie_id'].values))}"
         )
-        print(
+        log.info(
             f"{self._prefix} max item id before normalize: {max(set(ratings['movie_id'].values))}"
         )
-        # print(f"ratings.movie_id.cat.categories={ratings.movie_id.cat.categories}; {type(ratings.movie_id.cat.categories)}")
-        # print(f"ratings.movie_id.cat.codes={ratings.movie_id.cat.codes}; {type(ratings.movie_id.cat.codes)}")
-        # print(movie_id_to_cat)
-        # ratings["movie_id"] = ratings.movie_id.cat.codes
-        # print(f"{self._prefix} #item after normalize: {len(set(ratings['movie_id'].values))}")
-        # print(f"{self._prefix} max item id after normalize: {max(set(ratings['movie_id'].values))}")
-        # movies["remapped_id"] = movies["movie_id"].apply(lambda x: movie_id_to_cat[x])
-
         if self._convert_timestamp:
             ratings["unix_timestamp"] = pd.to_datetime(
                 ratings["unix_timestamp"], unit="s"
@@ -251,11 +244,11 @@ class MovielensDataProcessor(DataProcessor):
             result[col + "_mean"] = seq_ratings_data[col].apply(len).mean()
             result[col + "_min"] = seq_ratings_data[col].apply(len).min()
             result[col + "_max"] = seq_ratings_data[col].apply(len).max()
-        print(self._prefix)
-        print(result)
+        log.info(self._prefix)
+        log.info(result)
 
         seq_ratings_data = self.to_seq_data(seq_ratings_data, users)
-        seq_ratings_data.sample(frac=1).reset_index().to_csv(
+        seq_ratings_data.reset_index().to_csv(
             self.output_format_csv(), index=False, sep=","
         )
 
@@ -264,7 +257,7 @@ class MovielensDataProcessor(DataProcessor):
         seq_ratings_data_train = seq_ratings_data[
             seq_ratings_data["user_id"] <= user_id_split
         ]
-        seq_ratings_data_train.sample(frac=1).reset_index().to_csv(
+        seq_ratings_data_train.reset_index().to_csv(
             self.sasrec_format_csv_by_user_train(),
             index=False,
             sep=",",
@@ -272,17 +265,16 @@ class MovielensDataProcessor(DataProcessor):
         seq_ratings_data_test = seq_ratings_data[
             seq_ratings_data["user_id"] > user_id_split
         ]
-        seq_ratings_data_test.sample(frac=1).reset_index().to_csv(
+        seq_ratings_data_test.reset_index().to_csv(
             self.sasrec_format_csv_by_user_test(), index=False, sep=","
         )
-        print(
+        log.info(
             f"{self._prefix}: train num user: {len(set(seq_ratings_data_train['user_id'].values))}"
         )
-        print(
+        log.info(
             f"{self._prefix}: test num user: {len(set(seq_ratings_data_test['user_id'].values))}"
         )
 
-        # print(seq_ratings_data)
         if self.expected_num_unique_items() is not None:
             assert (
                 self.expected_num_unique_items() == num_unique_items
@@ -320,11 +312,11 @@ class AmazonDataProcessor(DataProcessor):
             sep=",",
             names=["user_id", "item_id", "rating", "timestamp"],
         )
-        print(f"{self._prefix} #data points before filter: {ratings.shape[0]}")
-        print(
+        log.info(f"{self._prefix} #data points before filter: {ratings.shape[0]}")
+        log.info(
             f"{self._prefix} #user before filter: {len(set(ratings['user_id'].values))}"
         )
-        print(
+        log.info(
             f"{self._prefix} #item before filter: {len(set(ratings['item_id'].values))}"
         )
 
@@ -345,17 +337,17 @@ class AmazonDataProcessor(DataProcessor):
         ratings = ratings.join(user_id_count.set_index("unique_values"), on="user_id")
         ratings = ratings[ratings["item_count"] >= 5]
         ratings = ratings[ratings["user_count"] >= 5]
-        print(f"{self._prefix} #data points after filter: {ratings.shape[0]}")
+        log.info(f"{self._prefix} #data points after filter: {ratings.shape[0]}")
 
         # categorize user id and item id
         ratings["item_id"] = pd.Categorical(ratings["item_id"])
         ratings["item_id"] = ratings["item_id"].cat.codes
         ratings["user_id"] = pd.Categorical(ratings["user_id"])
         ratings["user_id"] = ratings["user_id"].cat.codes
-        print(
+        log.info(
             f"{self._prefix} #user after filter: {len(set(ratings['user_id'].values))}"
         )
-        print(
+        log.info(
             f"{self._prefix} #item after filter: {len(set(ratings['item_id'].values))}"
         )
 
@@ -382,14 +374,14 @@ class AmazonDataProcessor(DataProcessor):
             result[col + "_mean"] = seq_ratings_data[col].apply(len).mean()
             result[col + "_min"] = seq_ratings_data[col].apply(len).min()
             result[col + "_max"] = seq_ratings_data[col].apply(len).max()
-        print(self._prefix)
-        print(result)
+        log.info(self._prefix)
+        log.info(result)
 
         if not os.path.exists(f"tmp/{self._prefix}"):
             os.makedirs(f"tmp/{self._prefix}")
 
         seq_ratings_data = self.to_seq_data(seq_ratings_data)
-        seq_ratings_data.sample(frac=1).reset_index().to_csv(
+        seq_ratings_data.reset_index().to_csv(
             self.output_format_csv(), index=False, sep=","
         )
 
@@ -400,40 +392,3 @@ class AmazonDataProcessor(DataProcessor):
             logging.info(f"{self.expected_num_unique_items()} unique items.")
 
         return num_unique_items
-
-
-def get_common_preprocessors():
-    ml_1m_dp = MovielensDataProcessor(
-        "http://files.grouplens.org/datasets/movielens/ml-1m.zip",
-        "tmp/movielens1m.zip",
-        prefix="ml-1m",
-        convert_timestamp=False,
-        expected_num_unique_items=3706,
-        expected_max_item_id=3952,
-    )
-    ml_20m_dp = MovielensDataProcessor(
-        "http://files.grouplens.org/datasets/movielens/ml-20m.zip",
-        "tmp/movielens20m.zip",
-        prefix="ml-20m",
-        convert_timestamp=False,
-        expected_num_unique_items=26744,
-        expected_max_item_id=131262,
-    )
-    ml_1b_dp = MovielensDataProcessor(
-        "https://files.grouplens.org/datasets/movielens/ml-20mx16x32.tar",
-        "tmp/movielens1b.tar",
-        prefix="ml-20mx16x32",
-        convert_timestamp=False,
-    )
-    amzn_books_dp = AmazonDataProcessor(
-        "http://snap.stanford.edu/data/amazon/productGraph/categoryFiles/ratings_Books.csv",
-        "tmp/ratings_Books.csv",
-        prefix="amzn_books",
-        expected_num_unique_items=695762,
-    )
-    return {
-        "ml-1m": ml_1m_dp,
-        "ml-20m": ml_20m_dp,
-        "ml-1b": ml_1b_dp,
-        "amzn-books": amzn_books_dp,
-    }

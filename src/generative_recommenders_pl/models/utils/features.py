@@ -65,7 +65,6 @@ def seq_features_from_row(
             index=historical_lengths.view(-1, 1),
             src=target_timestamps.view(-1, 1),
         )
-        # print(f"historical_ids.size()={historical_ids.size()}, historical_timestamps.size()={historical_timestamps.size()}")
     features = SequentialFeatures(
         past_lengths=historical_lengths,
         past_ids=historical_ids,

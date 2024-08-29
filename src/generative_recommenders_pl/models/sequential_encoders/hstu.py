@@ -26,7 +26,9 @@ import torch
 import torch.nn.functional as F
 
 from generative_recommenders_pl.models.utils import ops
+from generative_recommenders_pl.utils.logger import RankedLogger
 
+log = RankedLogger(__name__)
 TIMESTAMPS_KEY = "timestamps"
 
 
@@ -608,15 +610,15 @@ class HSTU(torch.nn.Module):
     def reset_params(self):
         for name, params in self.named_parameters():
             if ("_hstu" in name) or ("_embedding_module" in name):
-                print(f"Skipping init for {name}")
+                log.info(f"Skipping init for {name}")
                 continue
             try:
                 torch.nn.init.xavier_normal_(params.data)
-                print(
+                log.info(
                     f"Initialize {name} as xavier normal: {params.data.size()} params"
                 )
             except Exception:
-                print(f"Failed to initialize {name}: {params.data.size()} params")
+                log.info(f"Failed to initialize {name}: {params.data.size()} params")
 
     def debug_str(self) -> str:
         debug_str = (

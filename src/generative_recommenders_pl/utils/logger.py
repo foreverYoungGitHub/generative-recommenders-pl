@@ -1,7 +1,7 @@
 import logging
 from typing import Mapping, Optional
 
-from lightning_utilities.core.rank_zero import rank_prefixed_message, rank_zero_only
+import torch
 
 
 class RankedLogger(logging.LoggerAdapter):
@@ -16,13 +16,35 @@ class RankedLogger(logging.LoggerAdapter):
         """Initializes a multi-GPU-friendly python command line logger that logs on all processes
         with their rank prefixed in the log message.
 
-        :param name: The name of the logger. Default is ``__name__``.
-        :param rank_zero_only: Whether to force all logs to only occur on the rank zero process. Default is `True`.
-        :param extra: (Optional) A dict-like object which provides contextual information. See `logging.LoggerAdapter`.
+        Args:
+            name: The name of the logger. Default is ``__name__``.
+            rank_zero_only: Whether to force all logs to only occur on the rank zero process. Default is `True`.
+            extra: (Optional) A dict-like object which provides contextual information. See `logging.LoggerAdapter`.
         """
         logger = logging.getLogger(name)
         super().__init__(logger=logger, extra=extra)
         self.rank_zero_only = rank_zero_only
+
+    @staticmethod
+    def get_current_rank() -> int:
+        """Get the current process rank in PyTorch Lightning.
+
+        Returns:
+            int: The current process rank. Defaults to 0 if distributed training is not initialized.
+        """
+        if torch.distributed.is_initialized():
+            return torch.distributed.get_rank()
+        else:
+            # Default to rank 0 if distributed training is not initialized
+            return 0
+
+    @staticmethod
+    def rank_prefixed_message(message: str, rank: Optional[int]) -> str:
+        """Add a prefix with the rank to a message."""
+        if rank is not None:
+            # specify the rank of the process being logged
+            return f"[rank: {rank}] {message}"
+        return message
 
     def log(
         self, level: int, msg: str, rank: Optional[int] = None, *args, **kwargs
@@ -31,20 +53,17 @@ class RankedLogger(logging.LoggerAdapter):
         of the process it's being logged from. If `'rank'` is provided, then the log will only
         occur on that rank/process.
 
-        :param level: The level to log at. Look at `logging.__init__.py` for more information.
-        :param msg: The message to log.
-        :param rank: The rank to log at.
-        :param args: Additional args to pass to the underlying logging function.
-        :param kwargs: Any additional keyword args to pass to the underlying logging function.
+        Args:
+            level: The level to log at. Look at `logging.__init__.py` for more information.
+            msg: The message to log.
+            rank: The rank to log at.
+            args: Additional args to pass to the underlying logging function.
+            kwargs: Any additional keyword args to pass to the underlying logging function.
         """
         if self.isEnabledFor(level):
             msg, kwargs = self.process(msg, kwargs)
-            current_rank = getattr(rank_zero_only, "rank", None)
-            if current_rank is None:
-                raise RuntimeError(
-                    "The `rank_zero_only.rank` needs to be set before use"
-                )
-            msg = rank_prefixed_message(msg, current_rank)
+            current_rank = self.get_current_rank()
+            msg = self.rank_prefixed_message(msg, current_rank)
             if self.rank_zero_only:
                 if current_rank == 0:
                     self.logger.log(level, msg, *args, **kwargs)

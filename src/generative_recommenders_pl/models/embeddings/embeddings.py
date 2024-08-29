@@ -1,22 +1,11 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import abc
 
 import torch
 
 from generative_recommenders_pl.models.utils.initialization import truncated_normal
+from generative_recommenders_pl.utils.logger import RankedLogger
+
+log = RankedLogger(__name__)
 
 
 class EmbeddingModule(torch.nn.Module):
@@ -54,12 +43,12 @@ class LocalEmbeddingModule(EmbeddingModule):
     def reset_params(self):
         for name, params in self.named_parameters():
             if "_item_emb" in name:
-                print(
+                log.info(
                     f"Initialize {name} as truncated normal: {params.data.size()} params"
                 )
                 truncated_normal(params, mean=0.0, std=0.02)
             else:
-                print(f"Skipping initializing params {name} - not configured")
+                log.info(f"Skipping initializing params {name} - not configured")
 
     def get_item_embeddings(self, item_ids: torch.Tensor) -> torch.Tensor:
         return self._item_emb(item_ids)
@@ -91,12 +80,12 @@ class CategoricalEmbeddingModule(EmbeddingModule):
     def reset_params(self):
         for name, params in self.named_parameters():
             if "_item_emb" in name:
-                print(
+                log.info(
                     f"Initialize {name} as truncated normal: {params.data.size()} params"
                 )
                 truncated_normal(params, mean=0.0, std=0.02)
             else:
-                print(f"Skipping initializing params {name} - not configured")
+                log.info(f"Skipping initializing params {name} - not configured")
 
     def get_item_embeddings(self, item_ids: torch.Tensor) -> torch.Tensor:
         item_ids = self._item_id_to_category_id[(item_ids - 1).clamp(min=0)] + 1
