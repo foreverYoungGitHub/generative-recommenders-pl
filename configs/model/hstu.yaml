@@ -1,15 +1,12 @@
 _target_: generative_recommenders_pl.models.generative_recommenders.GenerativeRecommenders
 
 optimizer:
-  _target_: torch.optim.Adam
+  _target_: torch.optim.SGD
   _partial_: true
-  lr: 0.07
-  weight_decay: 0.6
 
 scheduler:
-  _target_: torch.optim.lr_scheduler.ExponentialLR
+  _target_: torch.optim.lr_scheduler.ConstantLR
   _partial_: true
-  gamma: 0.9
 
 configure_optimizer_params:
   monitor: val/hr@100
