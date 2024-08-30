@@ -21,6 +21,7 @@ _Suggestions are always welcome!_
 
 This repository aims to replicate the [Generative Recommenders](https://github.com/facebookresearch/generative-recommenders) using Lightning and Hydra. It hosts the code for the paper ["Actions Speak Louder than Words: Trillion-Parameter Sequential Transducers for Generative Recommendations"](https://arxiv.org/abs/2402.17152). While primarily intended for personal learning, this repository offers several key features:
 
+- **Efficient Training & Inference**: enhances training and inference speed by optimizing GPU utilization. As a result, the training of the MovieLens-1M dataset over 100 epochs can now be completed in under 10 minutes on a single 4090 or L4 machine.
 - **Experimentation Made Easy**: Easily manage and create hierarchical configurations with overrides via config files and command-line options to support various experiments.
 - **Modular Configuration**: Dynamically instantiate objects through configuration files, allowing seamless switching between different datasets or modules without extensive rewriting.
 - **Hardware Agnostic**: The dependency on NVIDIA GPUs has been removed, enabling you to run the scripts on any device, including local machines for training, evaluation, and debugging.
@@ -43,6 +44,12 @@ uv pip install fbgemm-gpu==0.7.0
 ```
 
 ## How to Run
+
+Prepare dataset based on config.
+
+```bash
+make prepare_data data=ml-1m
+```
 
 Train the Model with Default Configuration
 
