@@ -1,3 +1,4 @@
+import os
 from typing import Dict, List, Optional, Tuple
 
 import hydra
@@ -182,6 +183,8 @@ class RecoDataModule(L.LightningDataModule):
         chronological: bool,
         positional_sampling_ratio: float,
         batch_size: int = 32,
+        num_workers: int = os.cpu_count() // 4,
+        prefetch_factor: int = 4,
     ):
         super().__init__()
         self.__dict__.update(locals())
@@ -198,6 +201,8 @@ class RecoDataModule(L.LightningDataModule):
         self.chronological = chronological
         self.positional_sampling_ratio = positional_sampling_ratio
         self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.prefetch = prefetch_factor
         self.__init_item_ids()
 
     def __init_item_ids(self):
@@ -269,13 +274,25 @@ class RecoDataModule(L.LightningDataModule):
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(
-            self.train_dataset, batch_size=self.batch_size, shuffle=True
+            self.train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+            prefetch_factor=self.prefetch,
         )
 
     def val_dataloader(self):
-        return torch.utils.data.DataLoader(self.val_dataset, batch_size=self.batch_size)
+        return torch.utils.data.DataLoader(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            prefetch_factor=self.prefetch,
+        )
 
     def test_dataloader(self):
         return torch.utils.data.DataLoader(
-            self.test_dataset, batch_size=self.batch_size
+            self.test_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            prefetch_factor=self.prefetch,
         )

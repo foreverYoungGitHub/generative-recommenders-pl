@@ -2,6 +2,7 @@ from typing import Any, Optional
 
 import hydra
 import lightning as L
+import torch.multiprocessing
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig, OmegaConf
 
@@ -14,8 +15,8 @@ from generative_recommenders_pl.utils.logger import RankedLogger
 
 log = RankedLogger(__name__)
 
-
 OmegaConf.register_new_resolver("eval", eval)
+torch.multiprocessing.set_sharing_strategy("file_system")
 
 
 def train(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
