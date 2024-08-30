@@ -363,16 +363,24 @@ class GenerativeRecommenders(L.LightningModule):
             dict[str, torch.Tensor]: The jagged tensor.
         """
         jagged_id_offsets = ops.asynchronous_complete_cumsum(lengths)
-        return {
-            key: ops.dense_to_jagged(kwargs[key], jagged_id_offsets)
-            if key != "supervision_ids"
-            else ops.dense_to_jagged(
-                kwargs[key].unsqueeze(-1).float(), jagged_id_offsets
+        output = {}
+        if "supervision_ids" in kwargs:
+            output["supervision_ids"] = (
+                ops.dense_to_jagged(
+                    kwargs.pop("supervision_ids").unsqueeze(-1).float(),
+                    jagged_id_offsets,
+                )
+                .squeeze(1)
+                .long()
             )
-            .squeeze(1)
-            .long()
-            for key in kwargs
-        }
+
+        if "supervision_weights" in kwargs:
+            output["supervision_weights"] = ops.dense_to_jagged(
+                kwargs.pop("supervision_weights").unsqueeze(-1), jagged_id_offsets
+            ).squeeze(1)
+        for key, value in kwargs.items():
+            output[key] = ops.dense_to_jagged(value, jagged_id_offsets)
+        return output
 
     def training_step(self, batch: tuple[torch.Tensor], batch_idx: int) -> torch.Tensor:
         """Lightning calls this inside the training loop.
