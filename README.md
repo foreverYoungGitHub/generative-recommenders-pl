@@ -79,4 +79,14 @@ Override Parameters from the Command Line
 make train trainer.max_epochs=20 data.batch_size=64
 ```
 
+## Experiment Result:
+
+### MovieLens-1M (ML-1M)
+
+To ensure reproducibility and eliminate randomization, the sample in the dataset generation was removed, and the seed in training was set to 42.
+
+| Method | HR@10  | NDCG@10 | HR@50  | NDCG@50 | HR@100 | NDCG@100 | HR@200 | NDCG@200 |
+| ------ | ------ | ------- | ------ | ------- | ------ | -------- | ------ | -------- |
+| HSTU   | 0.2975 | 0.1680  | 0.5815 | 0.2308  | 0.6887 | 0.2483   | 0.7735 | 0.2602   |
+
 Feel free to explore and modify the configurations to suit your needs. Your contributions and suggestions are always welcome!
