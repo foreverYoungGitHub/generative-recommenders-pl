@@ -6,7 +6,7 @@ from generative_recommenders_pl.models.indexing.top_k import TopKModule
 from generative_recommenders_pl.models.utils import ops
 
 
-class CandidateIndex(object):
+class CandidateIndex(torch.nn.Module):
     def __init__(
         self,
         k: int,
@@ -17,8 +17,7 @@ class CandidateIndex(object):
         debug_path: Optional[str] = None,
     ) -> None:
         super().__init__()
-
-        self._ids: torch.Tensor = torch.as_tensor(ids).unsqueeze(0)
+        self.register_buffer("_ids", torch.as_tensor(ids).unsqueeze(0))
         self._k = min(k, self._ids.shape[1])
         self._top_k_module: TopKModule = top_k_module
         self._invalid_ids: Optional[torch.Tensor] = invalid_ids
