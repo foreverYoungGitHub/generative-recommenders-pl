@@ -8,6 +8,18 @@ import torch
 from omegaconf import DictConfig
 
 from generative_recommenders_pl.data.preprocessor import DataProcessor
+from generative_recommenders_pl.utils.logger import RankedLogger
+
+log = RankedLogger(__name__)
+
+
+def load_data(ratings_file: str | pd.DataFrame) -> pd.DataFrame:
+    if isinstance(ratings_file, pd.DataFrame):
+        return ratings_file
+    elif isinstance(ratings_file, str) and ratings_file.endswith(".csv"):
+        return pd.read_csv(ratings_file, delimiter=",")
+    else:
+        raise ValueError("ratings_file must be a csv file.")
 
 
 class RecoDataset(torch.utils.data.Dataset):
@@ -15,30 +27,58 @@ class RecoDataset(torch.utils.data.Dataset):
 
     def __init__(
         self,
-        ratings_file: str,
+        ratings_file: str | pd.DataFrame,
         padding_length: int,
         ignore_last_n: int,  # used for creating train/valid/test sets
         shift_id_by: int = 0,
         chronological: bool = False,
         sample_ratio: float = 1.0,
+        additional_columns: Optional[List[str]] = [],
     ) -> None:
         """
         Args:
-            csv_file (string): Path to the csv file.
+            ratings_file: str or pd.DataFrame, path to the ratings file or DataFrame.
+            padding_length: int, length to pad sequences to.
+            ignore_last_n: int, number of last interactions to ignore (used for creating train/valid/test sets).
+            shift_id_by: int, value to shift IDs by. Default is 0.
+            chronological: bool, whether to sort interactions chronologically. Default is False.
+            sample_ratio: float, ratio of data to sample. Default is 1.0 (use all data).
+            additional_columns: Optional[List[str]], list of additional columns to include. Default is None.
         """
         super().__init__()
 
-        self.ratings_frame = pd.read_csv(
-            ratings_file,
-            delimiter=",",
-            # iterator=True,
-        )
+        self.ratings_frame: pd.DataFrame = load_data(ratings_file)
         self._padding_length: int = padding_length
         self._ignore_last_n: int = ignore_last_n
         self._cache = dict()
         self._shift_id_by: int = shift_id_by
         self._chronological: bool = chronological
         self._sample_ratio: float = sample_ratio
+        self._additional_columns = additional_columns
+        self.__additional_columns_check()
+
+    def __additional_columns_check(self):
+        if self._additional_columns:
+            columns_status = []
+            for column in self._additional_columns:
+                # check the column exists and status, like type, max, min, etc.
+                column_exists = column in self.ratings_frame.columns
+                if not column_exists:
+                    raise ValueError(
+                        f"Column {column} does not exist in the ratings file."
+                    )
+                column_type = self.ratings_frame[column].dtype
+                max_value = self.ratings_frame[column].max()
+                min_value = self.ratings_frame[column].min()
+                columns_status.append(
+                    {
+                        "column": column,
+                        "type": column_type,
+                        "max": max_value,
+                        "min": min_value,
+                    }
+                )
+            log.info(f"Additional columns status: {columns_status}")
 
     def __len__(self) -> int:
         return len(self.ratings_frame)
@@ -168,6 +208,10 @@ class RecoDataset(torch.utils.data.Dataset):
             "target_ratings": target_ratings,
             "target_timestamps": target_timestamps,
         }
+
+        for column in self._additional_columns:
+            # currently we do not consider the sequence columns in the additional columns
+            ret[column] = data[column]
         return ret
 
 
@@ -263,6 +307,8 @@ class RecoDataModule(L.LightningDataModule):
                 kwargs["chronological"] = self.chronological
             if "position_sampling_ratio" not in dataset:
                 kwargs["sample_ratio"] = self.positional_sampling_ratio
+            # preload the data for shared dataset
+            kwargs["ratings_file"] = load_data(kwargs["ratings_file"])
             return hydra.utils.instantiate(dataset, **kwargs)
         else:
             return dataset
