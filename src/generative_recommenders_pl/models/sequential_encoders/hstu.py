@@ -645,11 +645,12 @@ class HSTU(torch.nn.Module):
 
         Args:
             past_lengths: (B,) x int64
-            past_ids: (B, N,) x int64 where the latest engaged ids come first. In
-                particular, past_ids[i, past_lengths[i] - 1] should correspond to
-                the latest engaged values.
-            past_embeddings: (B, N, D) x float or (\sum_b N_b, D) x float.
+            user_embeddings: (B, N, D) x float, the user embeddings from input features preprocessor
+            valid_mask: (B, N) x float, the valid mask from input features preprocessor
             past_payloads: implementation-specific keyed tensors of shape (B, N, ...).
+            delta_x_offsets: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+            cache: Optional[List[HSTUCacheState]] = None,
+            return_cache_states: bool = False,
 
         Returns:
             encoded_embeddings of [B, N, D].
