@@ -224,3 +224,33 @@ def jagged_or_dense_index_select_dim0(
             padded_x[indices, :],
             asynchronous_complete_cumsum(lengths[indices]),
         )
+
+
+def mask_dense_by_aux_mask(
+    dense_tensor: torch.Tensor,
+    aux_mask: torch.Tensor,
+    lengths: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Args:
+        dense_tensor: (B, N, D,) x float
+        aux_mask: (B, N,) x bool
+    """
+    max_lengths = dense_tensor.size(1)
+
+    # first convert dense_tensor to jagged
+    offsets = asynchronous_complete_cumsum(lengths)
+    jagged_tensor = dense_to_jagged(dense_tensor, offsets)
+    jagged_mask = dense_to_jagged(aux_mask, offsets)
+
+    # then mask the jagged tensor by aux_mask
+    masked_jagged_tensor = jagged_tensor[jagged_mask]
+    new_lengths = aux_mask.int().sum(dim=1)
+
+    # then convert the masked jagged tensor back to dense
+    return jagged_to_padded_dense(
+        values=masked_jagged_tensor,
+        offsets=asynchronous_complete_cumsum(new_lengths),
+        max_lengths=max_lengths,
+        padding_value=0.0,
+    ), new_lengths

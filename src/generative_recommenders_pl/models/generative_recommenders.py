@@ -300,7 +300,7 @@ class GenerativeRecommenders(L.LightningModule):
             cached_states: The cached states.
         """
         # input features preprocessor
-        past_lengths, user_embeddings, valid_mask = self.preprocessor(
+        past_lengths, user_embeddings, valid_mask, aux_mask = self.preprocessor(
             past_lengths=seq_features.past_lengths,
             past_ids=seq_features.past_ids,
             past_embeddings=seq_features.past_embeddings,
@@ -314,6 +314,11 @@ class GenerativeRecommenders(L.LightningModule):
             valid_mask=valid_mask,
             past_payloads=seq_features.past_payloads,
         )
+
+        if aux_mask is not None:
+            user_embeddings, _ = ops.mask_dense_by_aux_mask(
+                user_embeddings, aux_mask, past_lengths
+            )
 
         # output postprocessor
         encoded_embeddings = self.postprocessor(user_embeddings)

@@ -1,0 +1,65 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=ml-1m-hstu
+
+defaults:
+  - override /data: ml-1m
+  - override /model: hstu
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+seed: 42
+
+trainer:
+  min_epochs: 10
+  max_epochs: 500
+
+data:
+  batch_size: 128
+
+  train_dataset:
+    additional_columns: [sex, age_group, occupation, zip_code]
+
+  val_dataset:
+    additional_columns: ${data.train_dataset.additional_columns}
+
+  test_dataset:
+    additional_columns: ${data.train_dataset.additional_columns}
+
+model:
+  optimizer:
+    _target_: torch.optim.AdamW
+    _partial_: true
+    lr: 0.001
+    betas: [0.9, 0.98]
+    weight_decay: 0.001
+
+  scheduler:
+    _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+    _partial_: true
+    mode: max
+    factor: 0.1
+    patience: 10
+    threshold: 1e-4
+
+  configure_optimizer_params:
+    monitor: val/ndcg@100
+    interval: epoch
+    frequency: 1
+
+  preprocessor:
+    _target_: generative_recommenders_pl.models.preprocessors.input_features_preprocessors.LearnablePositionalEmbeddingAuxInputFeaturesPreprocessor
+    auxiliary_columns: ${data.train_dataset.additional_columns}
+    encoding_type: [onehot, onehot, onehot, embed]
+    categorical_dim: [2, 7, 21, 3439]
+    categorical_embedding_dim: [-1, -1, -1, 32]
+
+callbacks:
+  model_checkpoint:
+    monitor: val/ndcg@100
+    mode: max
+  early_stopping:
+    monitor: val/ndcg@100
+    patience: 20
+    mode: max

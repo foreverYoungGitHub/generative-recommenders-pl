@@ -85,8 +85,9 @@ make train trainer.max_epochs=20 data.batch_size=64
 
 To ensure reproducibility and eliminate randomization, the sample in the dataset generation was removed, and the seed in training was set to 42.
 
-| Method | HR@10  | NDCG@10 | HR@50  | NDCG@50 | HR@100 | NDCG@100 | HR@200 | NDCG@200 |
-| ------ | ------ | ------- | ------ | ------- | ------ | -------- | ------ | -------- |
-| HSTU   | 0.2975 | 0.1680  | 0.5815 | 0.2308  | 0.6887 | 0.2483   | 0.7735 | 0.2602   |
+| Method                                                | HR@10  | NDCG@10 | HR@50  | NDCG@50 | HR@100 | NDCG@100 | HR@200 | NDCG@200 | MRR    |
+| ----------------------------------------------------- | ------ | ------- | ------ | ------- | ------ | -------- | ------ | -------- | ------ |
+| [HSTU](configs/experiment/ml-1m-hstu.yaml)            | 0.2975 | 0.1680  | 0.5815 | 0.2308  | 0.6887 | 0.2483   | 0.7735 | 0.2602   | 0.1455 |
+| [HSTU w/ Aux](configs/experiment/ml-1m-hstu-aux.yaml) | 0.3031 | 0.1726  | 0.5798 | 0.2337  | 0.6861 | 0.2510   | 0.7724 | 0.2631   | 0.1493 |
 
 Feel free to explore and modify the configurations to suit your needs. Your contributions and suggestions are always welcome!

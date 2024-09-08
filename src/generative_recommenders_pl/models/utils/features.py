@@ -65,6 +65,16 @@ def seq_features_from_row(
             index=historical_lengths.view(-1, 1),
             src=target_timestamps.view(-1, 1),
         )
+
+    exclude_keys = {
+        "history_lengths",
+        "historical_ids",
+        "historical_ratings",
+        "historical_timestamps",
+        "target_ids",
+        "target_ratings",
+        "target_timestamps",
+    }
     features = SequentialFeatures(
         past_lengths=historical_lengths,
         past_ids=historical_ids,
@@ -72,6 +82,11 @@ def seq_features_from_row(
         past_payloads={
             "timestamps": historical_timestamps,
             "ratings": historical_ratings,
+            **{
+                key: value.to(device)
+                for key, value in row.items()
+                if key not in exclude_keys
+            },
         },
     )
     return features, target_ids, target_ratings
