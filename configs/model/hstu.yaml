@@ -1,4 +1,4 @@
-_target_: generative_recommenders_pl.models.generative_recommenders.GenerativeRecommenders
+_target_: generative_recommenders_pl.models.retrieval.Retrieval
 
 optimizer:
   _target_: torch.optim.SGD
@@ -22,7 +22,7 @@ embeddings:
   item_embedding_dim: ${model.item_embedding_dim}
 
 preprocessor:
-  _target_: generative_recommenders_pl.models.preprocessors.input_features_preprocessors.LearnablePositionalEmbeddingInputFeaturesPreprocessor
+  _target_: generative_recommenders_pl.models.preprocessors.LearnablePositionalEmbeddingInputFeaturesPreprocessor
   max_sequence_len: ${eval:${data.max_sequence_length} + ${model.gr_output_length} + 1}
   embedding_dim: ${model.item_embedding_dim}
   dropout_rate: 0.2
