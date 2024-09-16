@@ -42,11 +42,9 @@ class BCELoss(AutoregressiveLoss):
     def __init__(
         self,
         temperature: float,
-        model,  #: NDPModule,
     ) -> None:
         super().__init__()
         self._temperature: float = temperature
-        self._model = model
 
     def jagged_forward(
         self,
@@ -119,11 +117,9 @@ class BCELossWithRatings(AutoregressiveLoss):
     def __init__(
         self,
         temperature: float,
-        model,  #: NDPModule,
     ) -> None:
         super().__init__()
         self._temperature: float = temperature
-        self._model = model
 
     def jagged_forward(
         self,
@@ -154,8 +150,6 @@ class BCELossWithRatings(AutoregressiveLoss):
             )[0].squeeze(1)
             / self._temperature
         )  # [N']
-
-        # loss_weights = (supervision_ids > 0).to(torch.float32)
 
         weighted_losses = (
             F.binary_cross_entropy_with_logits(
