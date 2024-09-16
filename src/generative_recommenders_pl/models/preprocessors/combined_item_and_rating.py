@@ -102,6 +102,11 @@ class CombinedItemAndRatingInputFeaturesPreprocessor(InputFeaturesPreprocessorMo
         )
         user_embeddings = self._emb_dropout(user_embeddings)
 
+        # duplicate timestamps as well
+        past_payloads["timestamps"] = (
+            past_payloads["timestamps"].unsqueeze(2).expand(-1, -1, 2).reshape(B, N * 2)
+        )
+
         valid_mask = (
             self.get_preprocessed_masks(
                 past_lengths,
