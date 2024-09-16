@@ -4,6 +4,28 @@ import torchmetrics.utilities
 
 
 class RetrievalMetrics(torchmetrics.Metric):
+    """
+    A metric class for computing various retrieval metrics.
+
+    This class calculates NDCG (Normalized Discounted Cumulative Gain), HR (Hit Rate),
+    and MRR (Mean Reciprocal Rank) for a given set of top-k predictions and target IDs.
+
+    Args:
+        k (int): The number of top predictions to consider.
+        at_k_list (list[int]): List of k values for which to compute NDCG and HR.
+        **kwargs: Additional keyword arguments to pass to the parent Metric class.
+
+    Attributes:
+        k (int): The number of top predictions to consider.
+        at_k_list (list[int]): List of k values for NDCG and HR computation.
+        top_k_ids (list): State to store top-k prediction IDs.
+        target_ids (list): State to store target IDs.
+
+    Methods:
+        update(top_k_ids, target_ids): Update the metric states with new predictions and targets.
+        compute(): Compute and return the retrieval metrics.
+    """
+
     def __init__(self, k: int, at_k_list: list[int], **kwargs):
         super().__init__(**kwargs)
         self.k = k
