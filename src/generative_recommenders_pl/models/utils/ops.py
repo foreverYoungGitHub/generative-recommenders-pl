@@ -230,18 +230,22 @@ def mask_dense_by_aux_mask(
     dense_tensor: torch.Tensor,
     aux_mask: torch.Tensor,
     lengths: torch.Tensor,
+    max_lengths: int,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Args:
         dense_tensor: (B, N, D,) x float
         aux_mask: (B, N,) x bool
-    """
-    max_lengths = dense_tensor.size(1)
+        lengths: (B,) x int
+        max_lengths: int
 
+    Returns:
+        (B, N, D,) x float, (B,) x int
+    """
     # first convert dense_tensor to jagged
     offsets = asynchronous_complete_cumsum(lengths)
-    jagged_tensor = dense_to_jagged(dense_tensor, offsets)
-    jagged_mask = dense_to_jagged(aux_mask, offsets)
+    jagged_tensor = dense_to_jagged(dense_tensor, offsets)  # (B*N, D)
+    jagged_mask = dense_to_jagged(aux_mask, offsets)  # (B*N,)
 
     # then mask the jagged tensor by aux_mask
     masked_jagged_tensor = jagged_tensor[jagged_mask]
