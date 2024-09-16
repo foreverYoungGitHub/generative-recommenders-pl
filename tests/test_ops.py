@@ -76,7 +76,9 @@ def test_mask_dense_by_aux_mask(device):
     )
     expected_new_lengths = torch.tensor([2, 2], device=device)
 
-    output, new_lengths = ops.mask_dense_by_aux_mask(dense_tensor, aux_mask, lengths)
+    output, new_lengths = ops.mask_dense_by_aux_mask(
+        dense_tensor, aux_mask, lengths, dense_tensor.shape[1]
+    )
     assert torch.allclose(output, expected_output)
     assert torch.all(new_lengths == expected_new_lengths)
 
@@ -98,7 +100,9 @@ def test_mask_dense_by_aux_mask(device):
     )
     expected_new_lengths = torch.tensor([2, 1], device=device)
 
-    output, new_lengths = ops.mask_dense_by_aux_mask(dense_tensor, aux_mask, lengths)
+    output, new_lengths = ops.mask_dense_by_aux_mask(
+        dense_tensor, aux_mask, lengths, dense_tensor.shape[1]
+    )
     assert torch.allclose(output, expected_output)
     assert torch.all(new_lengths == expected_new_lengths)
 
@@ -112,7 +116,9 @@ def test_mask_dense_by_aux_mask(device):
     expected_output = torch.zeros_like(dense_tensor)
     expected_new_lengths = torch.zeros_like(lengths)
 
-    output, new_lengths = ops.mask_dense_by_aux_mask(dense_tensor, aux_mask, lengths)
+    output, new_lengths = ops.mask_dense_by_aux_mask(
+        dense_tensor, aux_mask, lengths, dense_tensor.shape[1]
+    )
     assert torch.allclose(output, expected_output)
     assert torch.all(new_lengths == expected_new_lengths)
 
@@ -126,6 +132,8 @@ def test_mask_dense_by_aux_mask(device):
     expected_output = dense_tensor.clone()
     expected_new_lengths = lengths.clone()
 
-    output, new_lengths = ops.mask_dense_by_aux_mask(dense_tensor, aux_mask, lengths)
+    output, new_lengths = ops.mask_dense_by_aux_mask(
+        dense_tensor, aux_mask, lengths, dense_tensor.shape[1]
+    )
     assert torch.allclose(output, expected_output)
     assert torch.all(new_lengths == expected_new_lengths)
