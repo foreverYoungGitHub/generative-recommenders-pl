@@ -161,6 +161,89 @@ class BCELossWithRatings(AutoregressiveLoss):
         return weighted_losses.sum() / supervision_weights.sum()
 
 
+class CERatingLoss(AutoregressiveLoss):
+    """
+    Multiclass Rating Loss for autoregressive recommendation models.
+
+    This loss function computes the cross-entropy loss for multiclass rating prediction
+    in an autoregressive setting. It is designed to work with a set of rating embeddings
+    shared across all items.
+
+    Args:
+        temperature (float): A scaling factor for the logits. Higher values produce softer
+                             probability distributions, while lower values make them sharper.
+
+    Attributes:
+        _temperature (float): The temperature scaling factor for logits.
+
+    Example:
+        >>> loss_fn = MulticlassRatingLoss(temperature=0.1)
+        >>> loss = loss_fn.jagged_forward(
+        ...     output_embeddings=model_output,
+        ...     supervision_embeddings=rating_embeddings,
+        ...     supervision_weights=batch['weights'],
+        ...     supervision_ratings=batch['ratings'],
+        ...     negatives_sampler=negative_sampler,
+        ...     similarity=similarity_module
+        ... )
+    """
+
+    def __init__(
+        self,
+        temperature: float,
+    ) -> None:
+        super().__init__()
+        self._temperature: float = temperature
+
+    def jagged_forward(
+        self,
+        output_embeddings: torch.Tensor,
+        supervision_embeddings: torch.Tensor,
+        supervision_weights: torch.Tensor,
+        supervision_ratings: torch.Tensor,
+        negatives_sampler: NegativesSampler,
+        similarity: NDPModule,
+        **kwargs,
+    ) -> torch.Tensor:
+        """
+        Args:
+            output_embeddings: [N', D] x float, embeddings for the current
+                input sequence.
+            supervision_embeddings: [R, D] x float. embeddings for the ratings.
+            supervision_weights: [N'] x float. Optional weights for
+                masking out invalid positions, or reweighting supervision labels.
+            supervision_ratings: [N'] x int64, ratings for the supervision ids.
+            negatives_sampler: negative sampler. Here only used to normalize the embeddings.
+            similarity: similarity function. Since the num of ratings is small,
+                we can afford to compute the similarity matrix by dot product.
+        """
+        assert output_embeddings.size()[:-1] == supervision_ratings.size()
+        assert supervision_ratings.size() == supervision_weights.size()
+
+        supervision_embeddings = negatives_sampler.normalize_embeddings(
+            supervision_embeddings
+        )
+
+        logits = (
+            similarity(
+                input_embeddings=output_embeddings,  # [N', D]
+                item_embeddings=supervision_embeddings.unsqueeze(0),  # [1, R, D]
+                item_sideinfo=None,
+                precomputed_logits=None,
+            )[0]
+            / self._temperature
+        )  # [N', R]
+
+        loss = F.cross_entropy(
+            logits,  # [N', R]
+            supervision_ratings,  # [N']
+            reduction="none",
+        )
+
+        weighted_losses = loss * supervision_weights  # [N']
+        return weighted_losses.sum() / supervision_weights.sum()
+
+
 class SampledSoftmaxLoss(AutoregressiveLoss):
     def __init__(
         self,
