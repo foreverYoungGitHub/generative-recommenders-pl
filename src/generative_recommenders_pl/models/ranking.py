@@ -15,11 +15,11 @@ log = RankedLogger(__name__)
 
 class Ranking(GenerativeRecommenders):
     def get_ratings_embeddings(self) -> torch.Tensor:
-        if not hasattr(self.preprocessor, "_ratings_emb"):
+        if not hasattr(self.preprocessor, "ratings_emb"):
             raise ValueError(
                 "Preprocessor does not have ratings embeddings, which is required for ranking."
             )
-        return self.preprocessor._ratings_emb
+        return self.preprocessor.ratings_emb
 
     @torch.inference_mode
     def logits(
@@ -41,7 +41,9 @@ class Ranking(GenerativeRecommenders):
             item_embeddings=self.negatives_sampler.normalize_embeddings(
                 self.get_ratings_embeddings()
             ).unsqueeze(0),  # [1, R, D]
-        )  # [N', R]
+            item_sideinfo=None,
+            item_ids=None,
+        )[0]  # [N', R]
         return logits
 
     def training_step(self, batch: tuple[torch.Tensor], batch_idx: int) -> torch.Tensor:
@@ -78,13 +80,20 @@ class Ranking(GenerativeRecommenders):
 
         # prepare loss
         supervision_ids = seq_features.past_ids
+        supervision_ratings = seq_features.past_payloads["ratings"]
+        supervision_ratings.scatter_(
+            dim=1,
+            index=seq_features.past_lengths.view(-1, 1),
+            src=target_ratings.view(-1, 1),
+        )
 
         # dense features to jagged features
         # TODO: seems that the target_ids is not used in the loss
         jagged_features = self.dense_to_jagged(
-            lengths=seq_features.past_lengths,
+            lengths=seq_features.past_lengths + 1,
             output_embeddings=seq_embeddings,  # [B, N, D]
             supervision_weights=(supervision_ids != 0).float(),  # ar_mask
+            supervision_ratings=supervision_ratings,
         )
 
         loss = self.loss.jagged_forward(
@@ -130,7 +139,7 @@ class Ranking(GenerativeRecommenders):
 
         # forward pass
         logits = self.logits(seq_features)
-        self.metrics.update(preds=logits, target=target_ratings)
+        self.metrics.update(preds=logits, target=target_ratings.squeeze(-1))
 
     def on_validation_epoch_end(self) -> None:
         """Lightning calls this at the end of the validation epoch.
