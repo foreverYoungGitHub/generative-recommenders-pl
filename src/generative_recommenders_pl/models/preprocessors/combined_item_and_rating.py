@@ -83,6 +83,12 @@ class CombinedItemAndRatingInputFeaturesPreprocessor(InputFeaturesPreprocessorMo
         B, N = past_ids.size()
         return (past_ids != 0).unsqueeze(2).expand(-1, -1, 2).reshape(B, N * 2)
 
+    def get_processed_item_embeddings(
+        self,
+        current_item_embedding: torch.Tensor,
+    ) -> torch.Tensor:
+        return current_item_embedding * (self._embedding_dim**0.5)
+
     def forward(
         self,
         past_lengths: torch.Tensor,
