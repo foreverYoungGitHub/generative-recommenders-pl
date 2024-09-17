@@ -16,5 +16,8 @@ train: ## Train the model
 eval: ## Evaluate the model
 	python src/generative_recommenders_pl/scripts/eval.py $(MAKEOVERRIDES)
 
+predict: ## Predict the model
+	python src/generative_recommenders_pl/scripts/predict.py $(MAKEOVERRIDES)
+
 prepare_data: ## Prepare data
 	python src/generative_recommenders_pl/scripts/prepare_data.py $(MAKEOVERRIDES)

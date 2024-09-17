@@ -22,6 +22,13 @@ def load_data(ratings_file: str | pd.DataFrame) -> pd.DataFrame:
         raise ValueError("ratings_file must be a csv file.")
 
 
+def save_data(ratings_frame: pd.DataFrame, output_file: str):
+    if output_file.endswith(".csv"):
+        ratings_frame.to_csv(output_file, index=False)
+    else:
+        raise ValueError("ratings_file must be a csv file.")
+
+
 class RecoDataset(torch.utils.data.Dataset):
     """In reverse chronological order."""
 
@@ -299,8 +306,6 @@ class RecoDataModule(L.LightningDataModule):
     def instantiate_dataset(self, dataset: RecoDataset | DictConfig) -> RecoDataset:
         if isinstance(dataset, DictConfig):
             kwargs = {}
-            if "ratings_file" not in dataset:
-                kwargs["ratings_file"] = self.data_preprocessor.output_format_csv()
             if "padding_length" not in dataset:
                 kwargs["padding_length"] = self.max_sequence_length + 1
             if "chronological" not in dataset:
@@ -308,15 +313,23 @@ class RecoDataModule(L.LightningDataModule):
             if "position_sampling_ratio" not in dataset:
                 kwargs["sample_ratio"] = self.positional_sampling_ratio
             # preload the data for shared dataset
-            kwargs["ratings_file"] = load_data(kwargs["ratings_file"])
-            return hydra.utils.instantiate(dataset, **kwargs)
+            ratings_file = (
+                dataset.pop("ratings_file")
+                if "ratings_file" in dataset
+                else self.data_preprocessor.output_format_csv()
+            )
+            ratings_file = load_data(ratings_file)
+            return hydra.utils.instantiate(dataset, ratings_file=ratings_file, **kwargs)
         else:
             return dataset
 
     def setup(self, stage=None):
-        self.train_dataset = self.instantiate_dataset(self.train_dataset)
-        self.val_dataset = self.instantiate_dataset(self.val_dataset)
-        self.test_dataset = self.instantiate_dataset(self.test_dataset)
+        if stage == "fit" or stage is None:
+            self.train_dataset = self.instantiate_dataset(self.train_dataset)
+            self.val_dataset = self.instantiate_dataset(self.val_dataset)
+
+        if stage == "test" or stage == "predict" or stage is None:
+            self.test_dataset = self.instantiate_dataset(self.test_dataset)
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(
@@ -342,3 +355,28 @@ class RecoDataModule(L.LightningDataModule):
             num_workers=self.num_workers,
             prefetch_factor=self.prefetch,
         )
+
+    def predict_dataloader(self):
+        return torch.utils.data.DataLoader(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            prefetch_factor=self.prefetch,
+        )
+
+    def save_predictions(self, output_file: str, predictions: dict):
+        """Save the predictions to a file.
+
+        It adds the predictions to the ratings_frame in the test dataset
+        since it is used for prediction and saves it to a file. And it
+        expects the predictions to be a dictionary of list / numpy arrays,
+        which has the same length and order as the test dataset.
+
+        Args:
+            output_file: str, path to the output file.
+            predictions: dict, predictions to save.
+        """
+        ratings_frame = self.test_dataset.ratings_frame
+        for key, value in predictions.items():
+            ratings_frame[key] = value
+        save_data(ratings_frame, output_file)
