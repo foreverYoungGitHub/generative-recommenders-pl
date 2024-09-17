@@ -191,6 +191,7 @@ class CERatingLoss(AutoregressiveLoss):
     def __init__(
         self,
         temperature: float,
+        **kwargs,  # temp add kwargs to avoid extra key init error
     ) -> None:
         super().__init__()
         self._temperature: float = temperature
@@ -229,6 +230,7 @@ class CERatingLoss(AutoregressiveLoss):
                 input_embeddings=output_embeddings,  # [N', D]
                 item_embeddings=supervision_embeddings.unsqueeze(0),  # [1, R, D]
                 item_sideinfo=None,
+                item_ids=None,
                 precomputed_logits=None,
             )[0]
             / self._temperature
