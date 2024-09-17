@@ -28,6 +28,9 @@ def predict(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
     if cfg.ckpt_path is None or cfg.ckpt_path == "":
         raise ValueError("Please provide a checkpoint path for prediction!")
 
+    if cfg.output_file is None or cfg.output_file == "":
+        raise ValueError("Please provide an output file for predictions!")
+
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
     datamodule: L.LightningDataModule = hydra.utils.instantiate(
         cfg.data, _recursive_=False
