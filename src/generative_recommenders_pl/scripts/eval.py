@@ -54,11 +54,8 @@ def evaluate(cfg: DictConfig) -> tuple[dict[str, Any], dict[str, Any]]:
         "trainer": trainer,
     }
 
-    datamodule.setup()
-    dataloaders = datamodule.test_dataloader()
-
     log.info("Starting testing!")
-    trainer.test(model=model, dataloaders=dataloaders, ckpt_path=cfg.ckpt_path)
+    trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
 
     metric_dict = trainer.callback_metrics
 
