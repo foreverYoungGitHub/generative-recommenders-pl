@@ -73,6 +73,12 @@ Evaluate the Model with a Given Checkpoint
 make eval ckpt_path=example_checkpoint.pt
 ```
 
+Predict the Model with a Given Checkpoint
+
+```bash
+make predict ckpt_path=example_checkpoint.pt output_file=example_output.csv
+```
+
 Override Parameters from the Command Line
 
 ```bash
