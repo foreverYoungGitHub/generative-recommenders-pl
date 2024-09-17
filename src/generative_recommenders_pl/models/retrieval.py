@@ -198,3 +198,43 @@ class Retrieval(GenerativeRecommenders):
         self.metrics.reset()
         if "monitor" in self.configure_optimizer_params:
             return results[self.configure_optimizer_params["monitor"].split("/")[1]]
+
+    def on_predict_epoch_start(self) -> None:
+        """Lightning calls this at the beginning of the predict epoch."""
+        self.candidate_index.update_embeddings(
+            self.negatives_sampler.normalize_embeddings(
+                self.embeddings.get_item_embeddings(self.candidate_index.ids)
+            )
+        )
+
+    def predict_step(
+        self, batch: tuple[torch.Tensor], batch_idx: int
+    ) -> dict[str, list]:
+        """Lightning calls this inside the predict loop."""
+        seq_features, _, _ = seq_features_from_row(
+            batch,
+            device=self.device,
+            max_output_length=self.gr_output_length + 1,
+        )
+
+        # embeddings
+        input_embeddings = self.embeddings.get_item_embeddings(seq_features.past_ids)
+        # TODO: think a better way than replace, since it creates a new instance
+        seq_features = seq_features._replace(past_embeddings=input_embeddings)
+
+        top_k_ids, top_k_scores = self.retrieve(seq_features)
+        return {
+            "top_k_ids": top_k_ids.cpu().numpy().tolist(),
+            "top_k_scores": top_k_scores.cpu().numpy().tolist(),
+        }
+
+    def on_predict_epoch_end(self) -> None:
+        """Lightning calls this at the end of the predict epoch."""
+        # Convert predictions from list of dicts to dict of lists
+        for i, predictions in enumerate(self.trainer.predict_loop._predictions):
+            if predictions and isinstance(predictions[0], dict):
+                keys = predictions[0].keys()
+                converted_predictions = {
+                    key: sum((pred[key] for pred in predictions), []) for key in keys
+                }
+                self.trainer.predict_loop._predictions[i] = converted_predictions
