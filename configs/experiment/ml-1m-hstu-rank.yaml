@@ -1,0 +1,71 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=ml-1m-hstu
+
+defaults:
+  - override /data: ml-1m
+  - override /model: hstu
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+seed: 42
+
+trainer:
+  min_epochs: 10
+  max_epochs: 500
+
+data:
+  batch_size: 128
+
+model:
+  _target_: generative_recommenders_pl.models.ranking.Ranking
+
+  optimizer:
+    _target_: torch.optim.AdamW
+    _partial_: true
+    lr: 0.001
+    betas: [0.9, 0.98]
+    weight_decay: 0.001
+
+  scheduler:
+    _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+    _partial_: true
+    mode: max
+    factor: 0.1
+    patience: 10
+    threshold: 1e-4
+
+  configure_optimizer_params:
+    monitor: val/ap
+    interval: epoch
+    frequency: 1
+
+  preprocessor:
+    _target_: generative_recommenders_pl.models.preprocessors.CombinedItemAndRatingInputFeaturesPreprocessor
+    max_sequence_len: ${eval:${data.max_sequence_length} + ${model.gr_output_length} + 1}
+    embedding_dim: ${model.item_embedding_dim}
+    dropout_rate: 0.2
+    num_ratings: 6
+
+  sequence_encoder:
+    _target_: generative_recommenders_pl.models.sequential_encoders.hstu.HSTU
+    max_sequence_len: ${eval:2*${data.max_sequence_length}}
+    max_output_len: ${eval:2*${model.gr_output_length} + 2}
+
+  loss:
+    _target_: generative_recommenders_pl.models.losses.autoregressive_losses.CERatingLoss
+    temperature: 0.05
+
+  metrics:
+    _target_: generative_recommenders_pl.models.metrics.multicls.MultiClsMetrics
+    num_classes: ${model.preprocessor.num_ratings}
+
+callbacks:
+  model_checkpoint:
+    monitor: val/ap
+    mode: max
+  early_stopping:
+    monitor: val/ap
+    patience: 20
+    mode: max
