@@ -32,6 +32,10 @@ class CombinedItemAndRatingInputFeaturesPreprocessor(InputFeaturesPreprocessorMo
         )
         self.reset_state()
 
+    @property
+    def ratings_emb(self) -> torch.Tensor:
+        return self._rating_emb.weight
+
     def debug_str(self) -> str:
         return f"combir_d{self._dropout_rate}"
 
